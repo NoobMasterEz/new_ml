@@ -9,6 +9,8 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
 import pathlib
 import numpy as np
+import glob
+
 
 class TransferLearning(object):
     """ 
@@ -30,6 +32,8 @@ class TransferLearning(object):
     NUM_CLASSES=None
     EPOCHS=10
     IMAGE_SHAPE=(224, 224, 3)
+    TEST_DATA=None
+    TRAIN_DATA=None
 
     def __init__(self,**kage):
         
@@ -38,23 +42,60 @@ class TransferLearning(object):
         self.EPOCHS=kage.get("EPOCHS")
         self.IMAGE_SHAPE=kage.get("IMAGE_SHAPE")
 
-    @classmethod
+  
     def load_data(self,url='https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz',frame="flower_photos"):
         """
             ==========
             Parameters
             ==========
-            This function downloads, extracts, loads, normalizes and one-hot encodes Flower Photos dataset
+            This function downloads, extracts, loads, normalizes and one-hot encodes Flower Photos dataset 
+            # dowloade data sets 
+            # classifiy data sets 
+            # 20% validation set 80% training set
+            # make the training dataset generator
             :url : from link datasets is target 
             :frame : what do you want link. i need Flower. me set defult Flower
         """
         #download the dataset and extract it
-        data_dir = get_file(origin=url,fname=frame, untar=True)
+        self.data_dir = get_file(origin=url,fname=frame, untar=True)
+        
         #count how many images are there 
-        data_dit= pathlib.Path(data_dir)
+        data_dit= pathlib.Path(self.data_dir)
         image_count=len(list(data_dit.glob('*/*.jpg')))
         print("Number of images:",image_count)
+        self.CLASS_NAMES = np.array([item.name for item in list(data_dit.glob('*')) if str(item.name) != "LICENSE.txt"])
+        # 20% validation set 80% training set
+        self.image_generator =ImageDataGenerator(rescale=1/255,validation_split=0.2)
+        
+
+
+    @property
+    def generator_test_train(self):
+        # make the training dataset generator
+        self.TEST_DATA=self.image_generator.flow_from_directory(
+            directory=str(self.data_dir),
+            batch_size=self.BATCH_SIZE,
+            classes=list(self.CLASS_NAMES),
+            target_size=(self.IMAGE_SHAPE[0],self.IMAGE_SHAPE[1]),
+            shuffle=True,
+            subset="training")
+        
+        self.TRAIN_DATA=self.image_generator.flow_from_directory(
+            directory=str(self.data_dir),
+            batch_size=self.BATCH_SIZE,
+            classes=list(self.CLASS_NAMES),
+            target_size=(self.IMAGE_SHAPE[0],self.IMAGE_SHAPE[1]),
+            shuffle=True,
+            subset="validation")
+        
+
+    @property
+    def fit(self):
+        self.load_data()
+        self.generator_test_train
+        print(self.TEST_DATA)
+        print(self.TRAIN_DATA)
 
 if __name__ == "__main__": 
     tfl=TransferLearning(BATCH_SIZE=32,NUM_CLASSES=5,EPOCHS=10,IMAGE_SHAPE=(224, 224, 3))
-    tfl.load_data()
+    tfl.fit
